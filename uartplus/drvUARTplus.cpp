@@ -31,6 +31,8 @@ See license.txt for more information
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+namespace Mark3 {
+
 //---------------------------------------------------------------------------
 static ATMegaUARTPlus* pclActive0; // Pointer to the active object
 static ATMegaUARTPlus* pclActive1; // Pointer to the active object
@@ -315,3 +317,5 @@ ISR(UART1_TX_ISR)
 {
     pclActive1->TxISR();
 }
+
+} // namespace Mark3
