@@ -21,5 +21,6 @@ target_link_libraries(ut_support
     uart
     atmegauart
     memutil
+    kernelaware
 )
 

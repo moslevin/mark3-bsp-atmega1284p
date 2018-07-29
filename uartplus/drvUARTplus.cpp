@@ -8,7 +8,7 @@
 
 --[Mark3 Realtime Platform]--------------------------------------------------
 
-Copyright (c) 2012 - 2017 Funkenstein Software Consulting, all rights reserved.
+Copyright (c) 2012 - 2018 m0slevin, all rights reserved.
 See license.txt for more information
 ===========================================================================*/
 /*!
@@ -26,7 +26,6 @@ See license.txt for more information
 #include "streamer.h"
 #include "threadport.h"
 #include "kerneltimer.h"
-#include "kernelaware.h"
 
 #include <avr/io.h>
 #include <avr/interrupt.h>

@@ -1,7 +1,7 @@
 #include "mark3.h"
 #include "memutil.h"
 #include "drvUART.h"
-
+#include "kernelaware.h"
 #include "drvATMegaUART.h"
 
 #include <avr/io.h>
@@ -41,9 +41,8 @@ void OnIdle()
 
 void OnExit(int /*rc*/)
 {
-#if KERNEL_AWARE_SIMULATION
     KernelAware::ExitSimulator();
-#endif
+
 }
 
 } // namespace UnitTest
