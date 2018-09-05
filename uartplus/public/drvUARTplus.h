@@ -11,11 +11,11 @@
 Copyright (c) 2012 - 2018 m0slevin, all rights reserved.
 See license.txt for more information
 =========================================================================== */
-/*!
+/**
 
-    \file   drvUARTplus.h
+    @file   drvUARTplus.h
 
-    \brief  Atmega serial port driver
+    @brief  Atmega serial port driver
 
  */
 #pragma once
@@ -66,56 +66,54 @@ See license.txt for more information
 
 namespace Mark3
 {
-
 //---------------------------------------------------------------------------
-/*!
+/**
     Implements a UART driver on the ATMega1284p
  */
 class ATMegaUARTPlus : public UartDriver
 {
 public:
-    virtual void     Init();
-    virtual uint8_t  Open();
-    virtual uint8_t  Close();
-    virtual uint16_t Read(uint16_t u16Bytes_, uint8_t* pu8Data_);
+    virtual int    Init();
+    virtual int    Open();
+    virtual int    Close();
+    virtual size_t Read(void* pvData_, size_t uBytes_);
 
-    virtual uint16_t Write(uint16_t u16Bytes_, uint8_t* pu8Data_);
+    virtual size_t Write(const void* pvData_, size_t uBytes_);
 
-    virtual uint16_t Control(uint16_t u16Event_, void* pvIn_, uint16_t u16SizeIn_, void* pvOut_, uint16_t u16SizeOut_);
-    /*!
+    virtual int Control(uint16_t u16Event_, void* pvIn_, size_t uSizeIn_, const void* pvOut_, size_t uSizeOut_);
+    /**
      *  Called from the transmit complete ISR - implements a
      *  callback/transmit state-machine
      */
     void TxISR();
 
-    /*!
+    /**
      *  Called from the receive-complete ISR - implements a
      *  callback/receive state-machine
      */
     void RxISR();
 
-    /*!
-     * \brief StreamInCallback
+    /**
+     * @brief StreamInCallback
      */
     void StreamInCallback();
 
 private:
-
-    /*!
-     * \brief StreamOutByte
-     * \param u8In_
-     * \return
+    /**
+     * @brief StreamOutByte
+     * @param u8In_
+     * @return
      */
     bool StreamOutByte(uint8_t u8In_);
 
-    /*!
-     * \brief StartTx
+    /**
+     * @brief StartTx
      */
     void StartTx();
 
-    /*!
-     * \brief SetBaud
-     * \param u32Baud_
+    /**
+     * @brief SetBaud
+     * @param u32Baud_
      */
     void SetBaud(uint32_t u32Baud_);
 
@@ -132,4 +130,4 @@ private:
     bool    m_bStartTx;
 };
 
-} //namespace Mark3
+} // namespace Mark3

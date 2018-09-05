@@ -11,11 +11,11 @@
 Copyright (c) 2012 - 2018 m0slevin, all rights reserved.
 See license.txt for more information
 ===========================================================================*/
-/*!
+/**
 
-    \file   kernelaware.cpp
+    @file   kernelaware.cpp
 
-    \brief  Kernel aware simulation support
+    @brief  Kernel aware simulation support
 */
 
 #include "kerneltypes.h"
@@ -24,7 +24,7 @@ See license.txt for more information
 #include "threadport.h"
 
 //---------------------------------------------------------------------------
-/*!
+/**
  *  This enumeration contains a list of supported commands that can be
  *  executed to invoke a response from a kernel aware host.
  */
@@ -42,7 +42,7 @@ typedef enum {
 } KernelAwareCommand_t;
 
 //---------------------------------------------------------------------------
-/*!
+/**
     This structure is used to communicate between the kernel and a kernel-
     aware host.  Its data contents is interpreted differently depending on
     the command executed (by means of setting the g_u8KACommand variable, as
@@ -52,15 +52,15 @@ typedef enum {
 */
 typedef union {
     volatile uint16_t au16Buffer[5]; //!< Raw binary contents of the struct
-                                     /*!
-                                      * \brief The Profiler struct contains data related to the code-execution
+                                     /**
+                                      * @brief The Profiler struct contains data related to the code-execution
                                       *        profiling functionality provided by a kernel-aware host simluator.
                                       */
     struct {
         volatile const char* szName; //!< Name of the profiling data to report
     } Profiler;
-    /*!
-     * \brief The Trace struct contains data related to the display and output
+    /**
+     * @brief The Trace struct contains data related to the display and output
      *        of kernel-trace strings on a kernel-aware host.
      */
     struct {
@@ -69,8 +69,8 @@ typedef union {
         volatile uint16_t u16Arg1; //!< (optional) argument code
         volatile uint16_t u16Arg2; //!< (optional) argument code
     } Trace;
-    /*!
-     * \brief The Print struct contains data related to the display of arbitrary
+    /**
+     * @brief The Print struct contains data related to the display of arbitrary
      *        null-terminated ASCII strings on the kernel-aware host.
      */
     struct {
@@ -88,8 +88,7 @@ KernelAwareData_t g_stKAData;       //!< Data structure used to communicate with
 namespace Mark3
 {
 //---------------------------------------------------------------------------
- void Trace_i(
-    uint16_t u16File_, uint16_t u16Line_, uint16_t u16Arg1_, uint16_t u16Arg2_, KernelAwareCommand_t eCmd_)
+void Trace_i(uint16_t u16File_, uint16_t u16Line_, uint16_t u16Arg1_, uint16_t u16Arg2_, KernelAwareCommand_t eCmd_)
 {
     CS_ENTER();
     g_stKAData.Trace.u16File = u16File_;
@@ -164,4 +163,4 @@ bool KernelAware::IsSimulatorAware(void)
 {
     return g_bIsKernelAware;
 }
-} //namespace Mark3
+} // namespace Mark3

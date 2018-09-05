@@ -11,11 +11,11 @@
 Copyright (c) 2012 - 2018 m0slevin, all rights reserved.
 See license.txt for more information
 ===========================================================================*/
-/*!
+/**
 
-    \file   drvUART.cpp
+    @file   drvUART.cpp
 
-    \brief  Atmega328p serial port driver
+    @brief  Atmega328p serial port driver
 */
 
 #include "kerneltypes.h"
@@ -28,8 +28,8 @@ See license.txt for more information
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-namespace Mark3 {
-
+namespace Mark3
+{
 //---------------------------------------------------------------------------
 static ATMegaUART* pclActive0; // Pointer to the active object
 static ATMegaUART* pclActive1; // Pointer to the active object
@@ -75,23 +75,24 @@ void ATMegaUART::SetBaud(void)
 }
 
 //---------------------------------------------------------------------------
-void ATMegaUART::Init(void)
+int ATMegaUART::Init(void)
 {
     // Set up the FIFOs
-    m_u8TxHead    = 0;
-    m_u8TxTail    = 0;
-    m_u8RxHead    = 0;
-    m_u8RxTail    = 0;
+    m_uTxHead     = 0;
+    m_uTxTail     = 0;
+    m_uRxHead     = 0;
+    m_uRxTail     = 0;
     m_bRxOverflow = 0;
     m_u32BaudRate = UART_DEFAULT_BAUD;
 
     // Clear flags
 
     SetBaud();
+    return 0;
 }
 
 //---------------------------------------------------------------------------
-uint8_t ATMegaUART::Open()
+int ATMegaUART::Open()
 {
     // Enable Rx/Tx + Interrupts
     if (m_u8Identity == 0) {
@@ -112,7 +113,7 @@ uint8_t ATMegaUART::Open()
 }
 
 //---------------------------------------------------------------------------
-uint8_t ATMegaUART::Close(void)
+int ATMegaUART::Close(void)
 {
     // Disable Rx/Tx + Interrupts
     if (m_u8Identity == 0) {
@@ -126,7 +127,7 @@ uint8_t ATMegaUART::Close(void)
 }
 
 //---------------------------------------------------------------------------
-uint16_t ATMegaUART::Control(uint16_t u16CmdId_, void* pvIn_, uint16_t u16SizeIn_, void* pvOut_, uint16_t u16SizeOut_)
+int ATMegaUART::Control(uint16_t u16CmdId_, void* pvIn_, size_t uSizeIn_, const void* pvOut_, size_t uSizeOut_)
 {
     switch (static_cast<UartOpcode_t>(u16CmdId_)) {
         case UART_OPCODE_SET_BAUDRATE: {
@@ -137,9 +138,9 @@ uint16_t ATMegaUART::Control(uint16_t u16CmdId_, void* pvIn_, uint16_t u16SizeIn
         case UART_OPCODE_SET_BUFFERS: {
             m_pu8RxBuffer = (uint8_t*)pvIn_;
             m_pu8TxBuffer = (uint8_t*)pvOut_;
-            m_u8RxSize    = u16SizeIn_;
-            m_u8TxSize    = u16SizeOut_;
-        } break;       
+            m_uRxSize     = uSizeIn_;
+            m_uTxSize     = uSizeOut_;
+        } break;
         case UART_OPCODE_SET_RX_ENABLE: {
             if (m_u8Identity == 0) {
                 UART0_SRB |= (1 << UART0_RXEN);
@@ -163,30 +164,29 @@ uint16_t ATMegaUART::Control(uint16_t u16CmdId_, void* pvIn_, uint16_t u16SizeIn
 }
 
 //---------------------------------------------------------------------------
-uint16_t ATMegaUART::Read(uint16_t u16SizeIn_, uint8_t* pvData_)
+size_t ATMegaUART::Read(void* pvData_, size_t uBytes_)
 {
     // Read a string of characters of length N.  Return the number of bytes
     // actually read.  If less than the 1 length, this indicates that
     // the buffer is full and that the app needs to wait.
 
-    uint16_t i       = 0;
-    uint16_t u16Read = 0;
-    bool     bExit   = 0;
-    uint8_t* pu8Data = (uint8_t*)pvData_;
+    size_t uRead   = 0;
+    bool   bExit   = 0;
+    auto*  pu8Data = reinterpret_cast<uint8_t*>(pvData_);
 
-    for (i = 0; i < u16SizeIn_; i++) {
+    for (size_t i = 0; i < uBytes_; i++) {
         // If Tail != Head, there's data in the buffer.
         CS_ENTER();
-        if (m_u8RxTail != m_u8RxHead) {
+        if (m_uRxTail != m_uRxHead) {
             // We have room to add the byte, so add it.
-            pu8Data[i] = m_pu8RxBuffer[m_u8RxTail];
+            pu8Data[i] = m_pu8RxBuffer[m_uRxTail];
 
             // Update the buffer head pointer.
-            m_u8RxTail++;
-            if (m_u8RxTail >= m_u8RxSize) {
-                m_u8RxTail = 0;
+            m_uRxTail++;
+            if (m_uRxTail >= m_uRxSize) {
+                m_uRxTail = 0;
             }
-            u16Read++;
+            uRead++;
         } else {
             // Can't do anything else - the buffer is empty
             bExit = 1;
@@ -198,42 +198,41 @@ uint16_t ATMegaUART::Read(uint16_t u16SizeIn_, uint8_t* pvData_)
             break;
         }
     }
-    return u16Read;
+    return uRead;
 }
 
 //---------------------------------------------------------------------------
-uint16_t ATMegaUART::Write(uint16_t u16SizeOut_, uint8_t* pvData_)
+size_t ATMegaUART::Write(const void* pvData_, size_t uSizeOut_)
 {
     // Write a string of characters of length N.  Return the number of bytes
     // actually written.  If less than the 1 length, this indicates that
     // the buffer is full and that the app needs to wait.
-    uint16_t i          = 0;
-    uint16_t u16Written = 0;
-    uint8_t  u8Next;
-    bool     bActivate = 0;
-    bool     bExit     = 0;
-    uint8_t* pu8Data   = (uint8_t*)pvData_;
+    size_t uWritten = 0;
+    size_t uNext;
+    bool   bActivate = 0;
+    bool   bExit     = 0;
+    auto*  pu8Data   = reinterpret_cast<const uint8_t*>(pvData_);
 
     // If the head = tail, we need to start sending data out the data ourselves.
-    if (m_u8TxHead == m_u8TxTail) {
+    if (m_uTxHead == m_uTxTail) {
         bActivate = 1;
     }
 
-    for (i = 0; i < u16SizeOut_; i++) {
+    for (size_t i = 0; i < uSizeOut_; i++) {
         CS_ENTER();
         // Check that head != tail (we have room)
-        u8Next = (m_u8TxHead + 1);
-        if (u8Next >= m_u8TxSize) {
-            u8Next = 0;
+        uNext = (m_uTxHead + 1);
+        if (uNext >= m_uTxSize) {
+            uNext = 0;
         }
 
-        if (u8Next != m_u8TxTail) {
+        if (uNext != m_uTxTail) {
             // We have room to add the byte, so add it.
-            m_pu8TxBuffer[m_u8TxHead] = pu8Data[i];
+            m_pu8TxBuffer[m_uTxHead] = pu8Data[i];
 
             // Update the buffer head pointer.
-            m_u8TxHead = u8Next;
-            u16Written++;
+            m_uTxHead = uNext;
+            uWritten++;
         } else {
             // Can't do anything - buffer is full
             bExit = 1;
@@ -263,7 +262,7 @@ uint16_t ATMegaUART::Write(uint16_t u16SizeOut_, uint8_t* pvData_)
         CS_EXIT();
     }
 
-    return u16Written;
+    return uWritten;
 }
 
 //---------------------------------------------------------------------------
@@ -276,17 +275,17 @@ void ATMegaUART::StartTx(void)
 
     // Send the byte at the tail index
     if (m_u8Identity == 0) {
-        UART0_UDR = m_pu8TxBuffer[m_u8TxTail];
+        UART0_UDR = m_pu8TxBuffer[m_uTxTail];
     } else {
-        UART1_UDR = m_pu8TxBuffer[m_u8TxTail];
+        UART1_UDR = m_pu8TxBuffer[m_uTxTail];
     }
 
     // Update the tail index
-    u8Next = (m_u8TxTail + 1);
-    if (u8Next >= m_u8TxSize) {
+    u8Next = (m_uTxTail + 1);
+    if (u8Next >= m_uTxSize) {
         u8Next = 0;
     }
-    m_u8TxTail = u8Next;
+    m_uTxTail = u8Next;
 
     CS_EXIT();
 }
@@ -305,23 +304,23 @@ void ATMegaUART::RxISR()
     }
 
     // Check that head != tail (we have room)
-    u8Next = (m_u8RxHead + 1);
-    if (u8Next >= m_u8RxSize) {
+    u8Next = (m_uRxHead + 1);
+    if (u8Next >= m_uRxSize) {
         u8Next = 0;
     }
 
     // Always add the byte to the buffer (but flag an error if it's full...)
-    m_pu8RxBuffer[m_u8RxHead] = u8Temp;
+    m_pu8RxBuffer[m_uRxHead] = u8Temp;
 
     // Update the buffer head pointer.
-    m_u8RxHead = u8Next;
+    m_uRxHead = u8Next;
 
     // If the buffer's full, discard the oldest byte in the buffer and flag an error
-    if (u8Next == m_u8RxTail) {
+    if (u8Next == m_uRxTail) {
         // Update the buffer tail pointer
-        m_u8RxTail = (m_u8RxTail + 1);
-        if (m_u8RxTail >= m_u8RxSize) {
-            m_u8RxTail = 0;
+        m_uRxTail = (m_uRxTail + 1);
+        if (m_uRxTail >= m_uRxSize) {
+            m_uRxTail = 0;
         }
 
         // Flag an error - the buffer is full
@@ -343,7 +342,7 @@ ISR(UART1_RX_ISR)
 void ATMegaUART::TxISR()
 {
     // If the head != tail, there's something to send.
-    if (m_u8TxHead != m_u8TxTail) {
+    if (m_uTxHead != m_uTxTail) {
         StartTx();
     }
 }

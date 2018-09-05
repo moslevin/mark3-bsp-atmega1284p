@@ -9,4 +9,3 @@ void DebugPrint(const char* szString_)
     KernelAware::Print(szString_);
 }
 } // namespace Mark3
-

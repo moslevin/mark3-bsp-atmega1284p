@@ -11,11 +11,11 @@
 Copyright (c) 2012 - 2018 m0slevin, all rights reserved.
 See license.txt for more information
 =========================================================================== */
-/*!
+/**
 
-    \file   drvUART.h
+    @file   drvUART.h
 
-    \brief  Atmega328p serial port driver
+    @brief  Atmega328p serial port driver
 
  */
 #pragma once
@@ -66,72 +66,72 @@ See license.txt for more information
 
 namespace Mark3
 {
-
 class ATMegaUART;
 //---------------------------------------------------------------------------
 typedef struct _UartData_t UartData_t;
 
 //---------------------------------------------------------------------------
-/*!
+/**
  *   Implements a UART driver on the ATMega328p
  */
 class ATMegaUART : public UartDriver
 {
 public:
-    virtual void     Init();
-    virtual uint8_t  Open();
-    virtual uint8_t  Close();
-    virtual uint16_t Read(uint16_t u16Bytes_, uint8_t* pu8Data_);
+    virtual int    Init();
+    virtual int    Open();
+    virtual int    Close();
+    virtual size_t Read(void* pu8Data_, size_t uBytes_);
+    virtual size_t Write(const void* pu8Data_, size_t uBytes_);
+    virtual int
+    Control(uint16_t u16EventID_, void* pvDataIn_, size_t uSizeIn_, const void* pvDataOut_, size_t uSizeOut_);
 
-    virtual uint16_t Write(uint16_t u16Bytes_, uint8_t* pu8Data_);
-
-    virtual uint16_t Control(uint16_t u16Event_, void* pvIn_, uint16_t u16SizeIn_, void* pvOut_, uint16_t u16SizeOut_);
-    /*!
+    /**
      *  Called from the transmit complete ISR - implements a
      *  callback/transmit state-machine
      */
     void TxISR();
 
-    /*!
+    /**
      *  Called from the receive-complete ISR - implements a
      *  callback/receive state-machine
      */
     void RxISR();
 
-    /*!
-     *  \brief GetRxBuffer
+    /**
+     *  @brief GetRxBuffer
      *
      *  Return a pointer to the receive buffer for this UART.
      *
-     *  \return pointer to the driver's RX buffer
+     *  @return pointer to the driver's RX buffer
      */
     uint8_t* GetRxBuffer(void) { return m_pu8RxBuffer; }
-    /*!
-     *  \brief GetTxBuffer
+    /**
+     *  @brief GetTxBuffer
      *
      *  Return a pointer to the transmit buffer for this UART.
      *
-     *  \return pointer to the driver's TX buffer
+     *  @return pointer to the driver's TX buffer
      */
     uint8_t* GetTxBuffer(void) { return m_pu8TxBuffer; }
+
 private:
     void SetBaud(void);
     void StartTx(void);
 
-    uint8_t m_u8TxSize; //!< Size of the TX Buffer
-    uint8_t m_u8TxHead; //!< Head index
-    uint8_t m_u8TxTail; //!< Tail index
+    size_t m_uTxSize; //!< Size of the TX Buffer
+    size_t m_uTxHead; //!< Head index
+    size_t m_uTxTail; //!< Tail index
 
-    uint8_t m_u8RxSize; //!< Size of the RX Buffer
-    uint8_t m_u8RxHead; //!< Head index
-    uint8_t m_u8RxTail; //!< Tail index
+    size_t m_uRxSize; //!< Size of the RX Buffer
+    size_t m_uRxHead; //!< Head index
+    size_t m_uRxTail; //!< Tail index
 
     uint8_t* m_pu8RxBuffer; //!< Receive buffer pointer
     uint8_t* m_pu8TxBuffer; //!< Transmit buffer pointer
 
     uint32_t m_u32BaudRate; //!< Baud rate
-    bool m_bRxOverflow; //!< indicates received overflow
-    uint8_t m_u8Identity; //!< port number
+    bool     m_bRxOverflow; //!< indicates received overflow
+    uint8_t  m_u8Identity;  //!< port number
 };
 
-} //namespace Mark3
+} // namespace Mark3
