@@ -1,7 +1,7 @@
 #include "mark3.h"
 #include "memutil.h"
 #include "drvUART.h"
-
+#include "kernelaware.h"
 #include "drvATMegaUART.h"
 
 #include <avr/io.h>
@@ -18,33 +18,30 @@ static uint8_t aucTxBuffer[UART_SIZE_TX];
 
 static ATMegaUART clUART; //!< UART device driver object
 
-namespace Mark3 {
-namespace UnitTestSupport {
-void OnInit()
+namespace Mark3
 {
-    clUART.SetName("/dev/tty"); //!< Add the serial driver
-    clUART.Init();
-
-    DriverList::Add(&clUART);
-}
-
-void OnStart()
+namespace UnitTestSupport
 {
-    clUART.SetBuffers(aucRxBuffer, UART_SIZE_RX, aucTxBuffer, UART_SIZE_TX);
-    clUART.Open();
-}
+    void OnInit()
+    {
+        clUART.SetName("/dev/tty"); //!< Add the serial driver
+        clUART.Init();
 
-void OnIdle()
-{
-    // stub
-}
+        DriverList::Add(&clUART);
+    }
 
-void OnExit(int /*rc*/)
-{
-#if KERNEL_AWARE_SIMULATION
-    KernelAware::ExitSimulator();
-#endif
-}
+    void OnStart()
+    {
+        clUART.SetBuffers(aucRxBuffer, UART_SIZE_RX, aucTxBuffer, UART_SIZE_TX);
+        clUART.Open();
+    }
+
+    void OnIdle()
+    {
+        // stub
+    }
+
+    void OnExit(int /*rc*/) { KernelAware::ExitSimulator(); }
 
 } // namespace UnitTest
 } // namespace Mark3

@@ -8,14 +8,14 @@
 
 --[Mark3 Realtime Platform]--------------------------------------------------
 
-Copyright (c) 2012 Funkenstein Software Consulting, all rights reserved.
+Copyright (c) 2012 m0slevin, all rights reserved.
 See license.txt for more information
 ===========================================================================*/
-/*!
+/**
 
-    \file   drvSound.cpp
+    @file   drvSound.cpp
 
-    \brief  ATMega1284p PWM Sound Driver
+    @brief  ATMega1284p PWM Sound Driver
 */
 
 #include "mark3cfg.h"
@@ -27,8 +27,8 @@ See license.txt for more information
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-namespace Mark3 {
-
+namespace Mark3
+{
 //---------------------------------------------------------------------------
 static volatile uint16_t u16BeatTimer  = 0;
 static volatile uint16_t u16NoteIndex  = 0;
@@ -80,7 +80,7 @@ void SoundDriver::SetTone(SquareWave_t* pstWave_)
 //---------------------------------------------------------------------------
 void SongCallback(Thread* pclOwner_, void* pvData_)
 {
-    Song_t* pstSong = (Song_t*)pvData_;
+    auto* pstSong = reinterpret_cast<Song_t*>(pvData_);
     u16BeatTimer++;
     if (u16BeatTimer >= pstSong->astNotes[u16NoteIndex].u16DurationBPM32) {
         u16BeatTimer = 0;
@@ -102,7 +102,7 @@ void SongCallback(Thread* pclOwner_, void* pvData_)
 void SweepCallback(Thread* pstOwner_, void* pvData_)
 {
     uint16_t u16Freq;
-    Sweep_t* pstSweep = (Sweep_t*)pvData_;
+    auto*    pstSweep = reinterpret_cast<Sweep_t*>(pvData_);
 
     if (u16SweepIdx < u16SweepSteps) {
         u16SweepIdx++;
@@ -166,7 +166,7 @@ void SoundDriver::StartSweep(Sweep_t* pstSweep_)
 }
 
 //---------------------------------------------------------------------------
-void SoundDriver::Init()
+int SoundDriver::Init()
 {
     clTimer.Init();
 
@@ -182,10 +182,11 @@ void SoundDriver::Init()
     DDRB |= (1 << 4); // Port B4 as output (PIN 5)
     PORTB = 0;
     OCR0B = 0;
+    return 0;
 }
 
 //---------------------------------------------------------------------------
-uint8_t SoundDriver::Open()
+int SoundDriver::Open()
 {
     OCR0B = 0;
     TIMSK0 |= (1 << OCIE0B);
@@ -193,7 +194,7 @@ uint8_t SoundDriver::Open()
 }
 
 //---------------------------------------------------------------------------
-uint8_t SoundDriver::Close()
+int SoundDriver::Close()
 {
     TIMSK0 &= ~(1 << OCIE0B);
     OCR0B = 0;
@@ -201,8 +202,7 @@ uint8_t SoundDriver::Close()
 }
 
 //---------------------------------------------------------------------------
-uint16_t
-SoundDriver::Control(uint16_t u16Event_, void* pvDataIn_, uint16_t u16SizeIn_, void* pvDataOut_, uint16_t u16SizeOut_)
+int SoundDriver::Control(uint16_t u16Event_, void* pvDataIn_, size_t uSizeIn_, const void* pvDataOut_, size_t uSizeOut_)
 {
     switch (u16Event_) {
         case SOUND_EVENT_OFF:
@@ -210,17 +210,17 @@ SoundDriver::Control(uint16_t u16Event_, void* pvDataIn_, uint16_t u16SizeIn_, v
             Close();
             break;
         case SOUND_EVENT_SQUAREWAVE: {
-            SquareWave_t* pstSW = (SquareWave_t*)pvDataIn_;
+            auto* pstSW = reinterpret_cast<SquareWave_t*>(pvDataIn_);
             SetTone(pstSW);
             break;
         }
         case SOUND_EVENT_SONG: {
-            Song_t* pstSong = (Song_t*)pvDataIn_;
+            auto* pstSong = reinterpret_cast<Song_t*>(pvDataIn_);
             StartSong(pstSong);
             break;
         }
         case SOUND_EVENT_SWEEP: {
-            Sweep_t* pstSweep = (Sweep_t*)pvDataIn_;
+            auto* pstSweep = reinterpret_cast<Sweep_t*>(pvDataIn_);
             StartSweep(pstSweep);
             break;
         }

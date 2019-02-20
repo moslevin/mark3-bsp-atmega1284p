@@ -8,14 +8,14 @@
 
 --[Mark3 Realtime Platform]--------------------------------------------------
 
-Copyright (c) 2012 Funkenstein Software Consulting, all rights reserved.
+Copyright (c) 2012 m0slevin, all rights reserved.
 See license.txt for more information
 ===========================================================================*/
-/*!
+/**
 
-    \file   drvSound.h
+    @file   drvSound.h
 
-    \brief  ATMega1284p PWM Sound Driver
+    @brief  ATMega1284p PWM Sound Driver
 
     This module contains an implementation of a simple sound driver, capable of
     generating accurate monophonic sounds via a Timer in PWM mode.
@@ -116,7 +116,6 @@ See license.txt for more information
 
 namespace Mark3
 {
-
 //---------------------------------------------------------------------------
 typedef struct {
     uint16_t u16Freq;       //!< Frequency of the square wave (in Hz)
@@ -151,15 +150,14 @@ typedef struct {
 class SoundDriver : public Driver
 {
 public:
-    virtual void Init();
+    virtual int Init();
+    virtual int Open();
+    virtual int Close();
 
-    virtual uint8_t Open();
-    virtual uint8_t Close();
-
-    virtual uint16_t Read(uint16_t u16Bytes_, uint8_t* pu8Data_) { return 0; }
-    virtual uint16_t Write(uint16_t u16Bytes_, uint8_t* pu8Data_) { return 0; }
-    virtual uint16_t
-    Control(uint16_t u16Event_, void* pvDataIn_, uint16_t u16SizeIn_, void* pvDataOut_, uint16_t u16SizeOut_);
+    virtual size_t Read(void* pvData_, size_t uBytes_) { return 0; }
+    virtual size_t Write(const void* pvData_, size_t uBytes_) { return 0; }
+    virtual int
+    Control(uint16_t u16EventID_, void* pvDataIn_, size_t uSizeIn_, const void* pvDataOut_, size_t uSizeOut_);
 
 private:
     void SetTone(SquareWave_t* pstWave_);
@@ -167,4 +165,4 @@ private:
     void StartSweep(Sweep_t* pstSweep_);
 };
 
-} //namespace Mark3
+} // namespace Mark3

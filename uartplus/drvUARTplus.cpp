@@ -8,14 +8,14 @@
 
 --[Mark3 Realtime Platform]--------------------------------------------------
 
-Copyright (c) 2012 - 2017 Funkenstein Software Consulting, all rights reserved.
+Copyright (c) 2012 - 2018 m0slevin, all rights reserved.
 See license.txt for more information
 ===========================================================================*/
-/*!
+/**
 
-    \file   drvUART.cpp
+    @file   drvUART.cpp
 
-    \brief  Atmega328p serial port driver
+    @brief  Atmega328p serial port driver
 */
 
 #include "kerneltypes.h"
@@ -26,13 +26,12 @@ See license.txt for more information
 #include "streamer.h"
 #include "threadport.h"
 #include "kerneltimer.h"
-#include "kernelaware.h"
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-namespace Mark3 {
-
+namespace Mark3
+{
 //---------------------------------------------------------------------------
 static ATMegaUARTPlus* pclActive0; // Pointer to the active object
 static ATMegaUARTPlus* pclActive1; // Pointer to the active object
@@ -78,7 +77,7 @@ void ATMegaUARTPlus::SetBaud(uint32_t u32Baud_)
 }
 
 //---------------------------------------------------------------------------
-void ATMegaUARTPlus::Init(void)
+int ATMegaUARTPlus::Init(void)
 {
     SetBaud(UART_DEFAULT_BAUD);
 
@@ -88,11 +87,12 @@ void ATMegaUARTPlus::Init(void)
     m_clTimerIn.Init();
 
     m_bBlocking = true;
-    m_bStartTx = true;
+    m_bStartTx  = true;
+    return 0;
 }
 
 //---------------------------------------------------------------------------
-uint8_t ATMegaUARTPlus::Open()
+int ATMegaUARTPlus::Open()
 {
     // Enable Rx/Tx + Interrupts
     if (m_u8Identity == 0) {
@@ -112,7 +112,7 @@ uint8_t ATMegaUARTPlus::Open()
 }
 
 //---------------------------------------------------------------------------
-uint8_t ATMegaUARTPlus::Close(void)
+int ATMegaUARTPlus::Close(void)
 {
     // Disable Rx/Tx + Interrupts
     if (m_u8Identity == 0) {
@@ -126,7 +126,7 @@ uint8_t ATMegaUARTPlus::Close(void)
 }
 
 //---------------------------------------------------------------------------
-uint16_t ATMegaUARTPlus::Control(uint16_t u16CmdId_, void* pvIn_, uint16_t u16SizeIn_, void* pvOut_, uint16_t u16SizeOut_)
+int ATMegaUARTPlus::Control(uint16_t u16CmdId_, void* pvIn_, size_t uSizeIn_, const void* pvOut_, size_t uSizeOut_)
 {
     switch (static_cast<UartOpcode_t>(u16CmdId_)) {
         case UART_OPCODE_SET_BAUDRATE: {
@@ -134,10 +134,10 @@ uint16_t ATMegaUARTPlus::Control(uint16_t u16CmdId_, void* pvIn_, uint16_t u16Si
             SetBaud(u32BaudRate);
         } break;
         case UART_OPCODE_SET_BUFFERS: {
-            uint8_t* pau8In = (uint8_t*)pvIn_;
+            uint8_t* pau8In  = (uint8_t*)pvIn_;
             uint8_t* pau8Out = (uint8_t*)pvOut_;
-            m_clStreamIn.Init(pau8In, u16SizeIn_);
-            m_clStreamOut.Init(pau8Out, u16SizeOut_);
+            m_clStreamIn.Init(pau8In, uSizeIn_);
+            m_clStreamOut.Init(pau8Out, uSizeOut_);
         } break;
         case UART_OPCODE_SET_RX_ENABLE: {
             if (m_u8Identity == 0) {
@@ -168,24 +168,24 @@ uint16_t ATMegaUARTPlus::Control(uint16_t u16CmdId_, void* pvIn_, uint16_t u16Si
 }
 
 //---------------------------------------------------------------------------
-uint16_t ATMegaUARTPlus::Read(uint16_t u16SizeIn_, uint8_t* pvData_)
+size_t ATMegaUARTPlus::Read(void* pvData_, size_t uSizeIn_)
 {
-    uint8_t* pu8Data = pvData_;
-    uint16_t u16Read = 0;
-    while (u16SizeIn_) {
+    auto*  pu8Data = reinterpret_cast<uint8_t*>(pvData_);
+    size_t uRead   = 0;
+    while (uSizeIn_) {
         if (m_clStreamIn.Read(pu8Data)) {
             pu8Data++;
-            u16SizeIn_--;
-            u16Read++;
+            uSizeIn_--;
+            uRead++;
         } else {
             if (m_bBlocking) {
                 m_clNotifyIn.Wait(0);
             } else {
-                return u16Read;
+                return uRead;
             }
         }
     }
-    return u16Read;
+    return uRead;
 }
 
 //---------------------------------------------------------------------------
@@ -196,7 +196,7 @@ bool ATMegaUARTPlus::StreamOutByte(uint8_t u8In_)
     }
     bool bStart = false;
     if (m_clStreamOut.IsEmpty() && m_bStartTx) {
-        bStart = true;
+        bStart     = true;
         m_bStartTx = false;
     }
     m_clStreamOut.Write(u8In_);
@@ -207,24 +207,24 @@ bool ATMegaUARTPlus::StreamOutByte(uint8_t u8In_)
 }
 
 //---------------------------------------------------------------------------
-uint16_t ATMegaUARTPlus::Write(uint16_t u16SizeOut_, uint8_t* pvData_)
+size_t ATMegaUARTPlus::Write(const void* pvData_, size_t uSizeOut_)
 {
-    uint8_t* pu8Data = pvData_;
-    uint16_t u16Written = 0;
-    while (u16SizeOut_) {
+    auto*  pu8Data  = reinterpret_cast<const uint8_t*>(pvData_);
+    size_t uWritten = 0;
+    while (uSizeOut_) {
         if (StreamOutByte(*pu8Data)) {
             pu8Data++;
-            u16SizeOut_--;
-            u16Written++;
+            uSizeOut_--;
+            uWritten++;
         } else {
             if (m_bBlocking) {
                 m_clNotifyOut.Wait(0);
             } else {
-                return u16Written;
+                return uWritten;
             }
         }
     }
-    return u16Written;
+    return uWritten;
 }
 
 //---------------------------------------------------------------------------
@@ -256,7 +256,7 @@ void ATMegaUARTPlus::StreamInCallback()
 //---------------------------------------------------------------------------
 static void StreamTimerCallback(Thread* pclOwner_, void* pvData_)
 {
-    ATMegaUARTPlus *pclThis = (ATMegaUARTPlus*)pvData_;
+    auto* pclThis = reinterpret_cast<ATMegaUARTPlus*>(pvData_);
     pclThis->StreamInCallback();
 }
 
