@@ -176,7 +176,7 @@ size_t ATMegaUART::Read(void* pvData_, size_t uBytes_)
 
     for (size_t i = 0; i < uBytes_; i++) {
         // If Tail != Head, there's data in the buffer.
-        CS_ENTER();
+        CriticalSection::Enter();
         if (m_uRxTail != m_uRxHead) {
             // We have room to add the byte, so add it.
             pu8Data[i] = m_pu8RxBuffer[m_uRxTail];
@@ -191,7 +191,7 @@ size_t ATMegaUART::Read(void* pvData_, size_t uBytes_)
             // Can't do anything else - the buffer is empty
             bExit = 1;
         }
-        CS_EXIT();
+        CriticalSection::Exit();
 
         // If we have to bail because the buffer is empty, do it now.
         if (bExit == 1) {
@@ -219,7 +219,7 @@ size_t ATMegaUART::Write(const void* pvData_, size_t uSizeOut_)
     }
 
     for (size_t i = 0; i < uSizeOut_; i++) {
-        CS_ENTER();
+        CriticalSection::Enter();
         // Check that head != tail (we have room)
         uNext = (m_uTxHead + 1);
         if (uNext >= m_uTxSize) {
@@ -237,7 +237,7 @@ size_t ATMegaUART::Write(const void* pvData_, size_t uSizeOut_)
             // Can't do anything - buffer is full
             bExit = 1;
         }
-        CS_EXIT();
+        CriticalSection::Exit();
 
         // bail if the buffer is full
         if (bExit == 1) {
@@ -248,7 +248,7 @@ size_t ATMegaUART::Write(const void* pvData_, size_t uSizeOut_)
     // Activate the transmission if we're currently idle
     if (bActivate == 1) {
         // We know we're idle if we get here.
-        CS_ENTER();
+        CriticalSection::Enter();
         if (m_u8Identity == 0) {
             if (UART0_SRA & (1 << UDRE0)) {
                 StartTx();
@@ -259,7 +259,7 @@ size_t ATMegaUART::Write(const void* pvData_, size_t uSizeOut_)
             }
         }
 
-        CS_EXIT();
+        CriticalSection::Exit();
     }
 
     return uWritten;
@@ -271,7 +271,7 @@ void ATMegaUART::StartTx(void)
     // Send the tail byte out.
     uint8_t u8Next;
 
-    CS_ENTER();
+    CriticalSection::Enter();
 
     // Send the byte at the tail index
     if (m_u8Identity == 0) {
@@ -287,7 +287,7 @@ void ATMegaUART::StartTx(void)
     }
     m_uTxTail = u8Next;
 
-    CS_EXIT();
+    CriticalSection::Exit();
 }
 
 //---------------------------------------------------------------------------

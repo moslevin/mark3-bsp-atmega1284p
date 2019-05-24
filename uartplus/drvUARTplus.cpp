@@ -230,7 +230,7 @@ size_t ATMegaUARTPlus::Write(const void* pvData_, size_t uSizeOut_)
 //---------------------------------------------------------------------------
 void ATMegaUARTPlus::StartTx()
 {
-    CS_ENTER();
+    CriticalSection::Enter();
     uint8_t u8Byte;
     if (m_clStreamOut.Read(&u8Byte)) {
         if (m_u8Identity == 0) {
@@ -239,17 +239,17 @@ void ATMegaUARTPlus::StartTx()
             UART1_UDR = u8Byte;
         }
     }
-    CS_EXIT();
+    CriticalSection::Exit();
 }
 
 //---------------------------------------------------------------------------
 void ATMegaUARTPlus::StreamInCallback()
 {
-    CS_ENTER();
+    CriticalSection::Enter();
     if (m_clStreamIn.IsEmpty()) {
         m_clTimerIn.Stop();
     }
-    CS_EXIT();
+    CriticalSection::Exit();
     m_clNotifyIn.Signal();
 }
 

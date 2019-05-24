@@ -22,6 +22,7 @@ See license.txt for more information
 #include "mark3cfg.h"
 #include "kernelaware.h"
 #include "threadport.h"
+#include "criticalsection.h"
 
 //---------------------------------------------------------------------------
 /**
@@ -90,22 +91,22 @@ namespace Mark3
 //---------------------------------------------------------------------------
 void Trace_i(uint16_t u16File_, uint16_t u16Line_, uint16_t u16Arg1_, uint16_t u16Arg2_, KernelAwareCommand_t eCmd_)
 {
-    CS_ENTER();
+    CriticalSection::Enter();
     g_stKAData.Trace.u16File = u16File_;
     g_stKAData.Trace.u16Line = u16Line_;
     g_stKAData.Trace.u16Arg1 = u16Arg1_;
     g_stKAData.Trace.u16Arg2 = u16Arg2_;
     g_u8KACommand            = eCmd_;
-    CS_EXIT();
+    CriticalSection::Exit();
 }
 
 //---------------------------------------------------------------------------
 void KernelAware::ProfileInit(const char* szStr_)
 {
-    CS_ENTER();
+    CriticalSection::Enter();
     g_stKAData.Profiler.szName = szStr_;
     g_u8KACommand              = KA_COMMAND_PROFILE_INIT;
-    CS_EXIT();
+    CriticalSection::Exit();
 }
 
 //---------------------------------------------------------------------------
@@ -152,10 +153,10 @@ void KernelAware::Trace(uint16_t u16File_, uint16_t u16Line_, uint16_t u16Arg1_,
 //--------------------------------------------- ------------------------------
 void KernelAware::Print(const char* szStr_)
 {
-    CS_ENTER();
+    CriticalSection::Enter();
     g_stKAData.Print.szString = szStr_;
     g_u8KACommand             = KA_COMMAND_PRINT;
-    CS_EXIT();
+    CriticalSection::Exit();
 }
 
 //---------------------------------------------------------------------------

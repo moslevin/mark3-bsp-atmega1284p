@@ -19,11 +19,12 @@ See license.txt for more information
 */
 
 #include "mark3cfg.h"
+#include "criticalsection.h"
 #include "kerneltypes.h"
 #include "kerneltimer.h"
 #include "threadport.h"
+#include "timer.h"
 #include "drvSound.h"
-
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
@@ -39,7 +40,7 @@ static volatile uint16_t target = 0;
 static volatile uint16_t count  = 0;
 static volatile uint8_t  level  = 0;
 
-static Timer clTimer;
+Timer clTimer;
 
 //---------------------------------------------------------------------------
 ISR(TIMER0_COMPB_vect)
@@ -68,11 +69,11 @@ void SoundDriver::SetTone(SquareWave_t* pstWave_)
     clTimer.Stop();
     Open();
 
-    CS_ENTER();
+    CriticalSection::Enter();
     target = pstWave_->u16Freq / 2;
     level  = pstWave_->u8Level;
     OCR0B  = level;
-    CS_EXIT();
+    CriticalSection::Exit();
 
     clTimer.Start(false, pstWave_->u16DurationMS, ToneCallback, 0);
 }
@@ -90,11 +91,11 @@ void SongCallback(Thread* pclOwner_, void* pvData_)
             u16NoteIndex = 0;
         }
 
-        CS_ENTER();
+        CriticalSection::Enter();
         target = pstSong->astNotes[u16NoteIndex].u16Freq / 2;
         level  = pstSong->astNotes[u16NoteIndex].u8Level;
         OCR0B  = level;
-        CS_EXIT();
+        CriticalSection::Exit();
     }
 }
 
@@ -113,10 +114,10 @@ void SweepCallback(Thread* pstOwner_, void* pvData_)
             u16Freq = pstSweep->u16FreqStart - u16SweepIdx;
         }
 
-        CS_ENTER();
+        CriticalSection::Enter();
         target = u16Freq / 2;
         level  = pstSweep->u8Level;
-        CS_EXIT();
+        CriticalSection::Exit();
 
         if (u16SweepIdx == u16SweepSteps) {
             OCR0B = 0;
@@ -134,12 +135,12 @@ void SoundDriver::StartSong(Song_t* pstSong_)
 
     clTimer.Stop();
 
-    CS_ENTER();
+    CriticalSection::Enter();
     count  = 0;
     target = pstSong_->astNotes[0].u16Freq / 2;
     level  = pstSong_->astNotes[0].u8Level;
     OCR0B  = level;
-    CS_EXIT();
+    CriticalSection::Exit();
 
     clTimer.Start(true, u32BeatTimeMS32, SongCallback, pstSong_);
     u16BeatTimer = 0;
@@ -156,11 +157,11 @@ void SoundDriver::StartSweep(Sweep_t* pstSweep_)
     u16SweepIdx   = 0;
     u16SweepSteps = (pstSweep_->u16Duration) / pstSweep_->u16Speed;
 
-    CS_ENTER();
+    CriticalSection::Enter();
     target = pstSweep_->u16FreqStart / 2;
     level  = pstSweep_->u8Level;
     OCR0B  = level;
-    CS_EXIT();
+    CriticalSection::Exit();
 
     clTimer.Start(true, pstSweep_->u16Speed, SweepCallback, pstSweep_);
 }
