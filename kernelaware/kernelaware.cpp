@@ -8,7 +8,7 @@
 
 --[Mark3 Realtime Platform]--------------------------------------------------
 
-Copyright (c) 2012 - 2018 m0slevin, all rights reserved.
+Copyright (c) 2012 - 2019 m0slevin, all rights reserved.
 See license.txt for more information
 ===========================================================================*/
 /**
@@ -23,7 +23,7 @@ See license.txt for more information
 #include "kernelaware.h"
 #include "threadport.h"
 #include "criticalsection.h"
-
+#include "criticalguard.h"
 //---------------------------------------------------------------------------
 /**
  *  This enumeration contains a list of supported commands that can be
@@ -39,7 +39,12 @@ typedef enum {
     KA_COMMAND_TRACE_0,        //!< 0-argument kernel trace
     KA_COMMAND_TRACE_1,        //!< 1-argument kernel trace
     KA_COMMAND_TRACE_2,        //!< 2-argument kernel trace
-    KA_COMMAND_PRINT           //!< Print an arbitrary string of data
+    KA_COMMAND_PRINT,          //!< Print an arbitrary string of data
+    KA_COMMAND_OPEN,           //!< Open a path on the host device filesystem
+    KA_COMMAND_CLOSE,          //!< Close a previously opened file on the host
+    KA_COMMAND_READ,           //!< Read data from an open file in the host
+    KA_COMMAND_WRITE,          //!< Write data to a file on the host
+    KA_COMMAND_BLOCKING,       //!< Set blocking/non-blocking mode for an open host file
 } KernelAwareCommand_t;
 
 //---------------------------------------------------------------------------
@@ -77,6 +82,49 @@ typedef union {
     struct {
         volatile const char* szString; //!< Pointer ot a string (in RAM) to print
     } Print;
+
+    struct {
+        volatile const char* szPath;
+        volatile bool bRead;
+        volatile bool bWrite;
+        volatile bool bCreate;
+        volatile bool bAppend;
+        volatile bool bTruncate;
+    } OpenRequest;
+
+    struct {
+        volatile int32_t iHostFd;
+    } OpenReturn;
+
+    struct {
+        volatile int32_t iHostFd;
+    } Close;
+
+    struct {
+        volatile int32_t iHostFd;
+        volatile K_ADDR* paReadBuf;
+        volatile K_WORD  u16BytesToRead;
+    } Read;
+
+    struct {
+        volatile int32_t iBytesRead;
+    } ReadReturn;
+
+    struct {
+        volatile int32_t iHostFd;
+        volatile const K_ADDR* paWriteBuf;
+        volatile K_WORD  u16BytesToWrite;
+    } Write;
+
+    struct {
+        volatile int32_t iBytesWritten;
+    } WriteReturn;
+
+    struct {
+        volatile int32_t iHostFd;
+        volatile bool bBlocking;
+    } Blocking;
+
 } KernelAwareData_t;
 
 //---------------------------------------------------------------------------
@@ -91,39 +139,40 @@ namespace Mark3
 //---------------------------------------------------------------------------
 void Trace_i(uint16_t u16File_, uint16_t u16Line_, uint16_t u16Arg1_, uint16_t u16Arg2_, KernelAwareCommand_t eCmd_)
 {
-    CriticalSection::Enter();
+    const auto cg = CriticalGuard{};
     g_stKAData.Trace.u16File = u16File_;
     g_stKAData.Trace.u16Line = u16Line_;
     g_stKAData.Trace.u16Arg1 = u16Arg1_;
     g_stKAData.Trace.u16Arg2 = u16Arg2_;
     g_u8KACommand            = eCmd_;
-    CriticalSection::Exit();
 }
 
 //---------------------------------------------------------------------------
 void KernelAware::ProfileInit(const char* szStr_)
 {
-    CriticalSection::Enter();
+    const auto cg = CriticalGuard{};
     g_stKAData.Profiler.szName = szStr_;
     g_u8KACommand              = KA_COMMAND_PROFILE_INIT;
-    CriticalSection::Exit();
 }
 
 //---------------------------------------------------------------------------
 void KernelAware::ProfileStart(void)
 {
+    const auto cg = CriticalGuard{};
     g_u8KACommand = KA_COMMAND_PROFILE_START;
 }
 
 //---------------------------------------------------------------------------
 void KernelAware::ProfileStop(void)
 {
+    const auto cg = CriticalGuard{};
     g_u8KACommand = KA_COMMAND_PROFILE_STOP;
 }
 
 //---------------------------------------------------------------------------
 void KernelAware::ProfileReport(void)
 {
+    const auto cg = CriticalGuard{};
     g_u8KACommand = KA_COMMAND_PROFILE_REPORT;
 }
 
@@ -136,27 +185,29 @@ void KernelAware::ExitSimulator(void)
 //---------------------------------------------------------------------------
 void KernelAware::Trace(uint16_t u16File_, uint16_t u16Line_)
 {
+    const auto cg = CriticalGuard{};
     Trace_i(u16File_, u16Line_, 0, 0, KA_COMMAND_TRACE_0);
 }
 
 //---------------------------------------------------------------------------
 void KernelAware::Trace(uint16_t u16File_, uint16_t u16Line_, uint16_t u16Arg1_)
 {
+    const auto cg = CriticalGuard{};
     Trace_i(u16File_, u16Line_, u16Arg1_, 0, KA_COMMAND_TRACE_1);
 }
 //---------------------------------------------------------------------------
 void KernelAware::Trace(uint16_t u16File_, uint16_t u16Line_, uint16_t u16Arg1_, uint16_t u16Arg2_)
 {
+    const auto cg = CriticalGuard{};
     Trace_i(u16File_, u16Line_, u16Arg1_, u16Arg2_, KA_COMMAND_TRACE_2);
 }
 
-//--------------------------------------------- ------------------------------
+//---------------------------------------------------------------------------
 void KernelAware::Print(const char* szStr_)
 {
-    CriticalSection::Enter();
+    const auto cg = CriticalGuard{};
     g_stKAData.Print.szString = szStr_;
     g_u8KACommand             = KA_COMMAND_PRINT;
-    CriticalSection::Exit();
 }
 
 //---------------------------------------------------------------------------
@@ -164,4 +215,61 @@ bool KernelAware::IsSimulatorAware(void)
 {
     return g_bIsKernelAware;
 }
+
+//---------------------------------------------------------------------------
+int32_t KernelAware::Open(const char* szPath_, bool bRead_, bool bWrite_, bool bAppend_, bool bCreate_, bool bTruncate_)
+{
+    const auto cg = CriticalGuard{};
+    g_stKAData.OpenRequest.szPath = szPath_;
+    g_stKAData.OpenRequest.bRead = bRead_;
+    g_stKAData.OpenRequest.bWrite = bWrite_;
+    g_stKAData.OpenRequest.bAppend = bAppend_;
+    g_stKAData.OpenRequest.bCreate = bCreate_;
+    g_stKAData.OpenRequest.bTruncate = bTruncate_;
+    g_u8KACommand = KA_COMMAND_OPEN;
+
+    return g_stKAData.OpenReturn.iHostFd;
+}
+
+//---------------------------------------------------------------------------
+void KernelAware::Close(int32_t iHostFd_)
+{
+    const auto cg = CriticalGuard{};
+    g_stKAData.Close.iHostFd = iHostFd_;
+    g_u8KACommand = KA_COMMAND_CLOSE;
+}
+
+//---------------------------------------------------------------------------
+K_WORD KernelAware::Read(int32_t iHostFd_, K_ADDR* paReadBuffer_, uint16_t u16BytesToRead_)
+{
+    const auto cg = CriticalGuard{};
+    g_stKAData.Read.iHostFd = iHostFd_;
+    g_stKAData.Read.paReadBuf = paReadBuffer_;
+    g_stKAData.Read.u16BytesToRead = u16BytesToRead_;
+    g_u8KACommand = KA_COMMAND_READ;
+
+    return g_stKAData.ReadReturn.iBytesRead;
+}
+
+//---------------------------------------------------------------------------
+K_WORD KernelAware::Write(int32_t iHostFd_, const K_ADDR* paWriteBuffer_, uint16_t u16BytesToWrite_)
+{
+    const auto cg= CriticalGuard{};
+    g_stKAData.Write.iHostFd = iHostFd_;
+    g_stKAData.Write.paWriteBuf = paWriteBuffer_;
+    g_stKAData.Write.u16BytesToWrite = u16BytesToWrite_;
+    g_u8KACommand = KA_COMMAND_WRITE;
+
+    return g_stKAData.WriteReturn.iBytesWritten;
+}
+
+//---------------------------------------------------------------------------
+void KernelAware::SetBlockingMode(int32_t iHostFd_, bool bBlocking_)
+{
+    const auto cg = CriticalGuard{};
+    g_stKAData.Blocking.iHostFd = iHostFd_;
+    g_stKAData.Blocking.bBlocking = bBlocking_;
+    g_u8KACommand = KA_COMMAND_BLOCKING;
+}
+
 } // namespace Mark3
