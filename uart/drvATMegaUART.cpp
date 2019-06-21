@@ -8,7 +8,7 @@
 
 --[Mark3 Realtime Platform]--------------------------------------------------
 
-Copyright (c) 2012 - 2018 m0slevin, all rights reserved.
+Copyright (c) 2012 - 2019 m0slevin, all rights reserved.
 See license.txt for more information
 ===========================================================================*/
 /**
@@ -176,22 +176,23 @@ size_t ATMegaUART::Read(void* pvData_, size_t uBytes_)
 
     for (size_t i = 0; i < uBytes_; i++) {
         // If Tail != Head, there's data in the buffer.
-        CriticalSection::Enter();
-        if (m_uRxTail != m_uRxHead) {
-            // We have room to add the byte, so add it.
-            pu8Data[i] = m_pu8RxBuffer[m_uRxTail];
+        {
+            const auto cg = CriticalGuard{};
+            if (m_uRxTail != m_uRxHead) {
+                // We have room to add the byte, so add it.
+                pu8Data[i] = m_pu8RxBuffer[m_uRxTail];
 
-            // Update the buffer head pointer.
-            m_uRxTail++;
-            if (m_uRxTail >= m_uRxSize) {
-                m_uRxTail = 0;
+                // Update the buffer head pointer.
+                m_uRxTail++;
+                if (m_uRxTail >= m_uRxSize) {
+                    m_uRxTail = 0;
+                }
+                uRead++;
+            } else {
+                // Can't do anything else - the buffer is empty
+                bExit = 1;
             }
-            uRead++;
-        } else {
-            // Can't do anything else - the buffer is empty
-            bExit = 1;
         }
-        CriticalSection::Exit();
 
         // If we have to bail because the buffer is empty, do it now.
         if (bExit == 1) {
@@ -219,25 +220,26 @@ size_t ATMegaUART::Write(const void* pvData_, size_t uSizeOut_)
     }
 
     for (size_t i = 0; i < uSizeOut_; i++) {
-        CriticalSection::Enter();
-        // Check that head != tail (we have room)
-        uNext = (m_uTxHead + 1);
-        if (uNext >= m_uTxSize) {
-            uNext = 0;
-        }
+        {
+            const auto cg = CriticalGuard{};
+            // Check that head != tail (we have room)
+            uNext = (m_uTxHead + 1);
+            if (uNext >= m_uTxSize) {
+                uNext = 0;
+            }
 
-        if (uNext != m_uTxTail) {
-            // We have room to add the byte, so add it.
-            m_pu8TxBuffer[m_uTxHead] = pu8Data[i];
+            if (uNext != m_uTxTail) {
+                // We have room to add the byte, so add it.
+                m_pu8TxBuffer[m_uTxHead] = pu8Data[i];
 
-            // Update the buffer head pointer.
-            m_uTxHead = uNext;
-            uWritten++;
-        } else {
-            // Can't do anything - buffer is full
-            bExit = 1;
+                // Update the buffer head pointer.
+                m_uTxHead = uNext;
+                uWritten++;
+            } else {
+                // Can't do anything - buffer is full
+                bExit = 1;
+            }
         }
-        CriticalSection::Exit();
 
         // bail if the buffer is full
         if (bExit == 1) {
@@ -248,7 +250,7 @@ size_t ATMegaUART::Write(const void* pvData_, size_t uSizeOut_)
     // Activate the transmission if we're currently idle
     if (bActivate == 1) {
         // We know we're idle if we get here.
-        CriticalSection::Enter();
+        const auto cg = CriticalGuard{};
         if (m_u8Identity == 0) {
             if (UART0_SRA & (1 << UDRE0)) {
                 StartTx();
@@ -258,8 +260,6 @@ size_t ATMegaUART::Write(const void* pvData_, size_t uSizeOut_)
                 StartTx();
             }
         }
-
-        CriticalSection::Exit();
     }
 
     return uWritten;
@@ -271,8 +271,7 @@ void ATMegaUART::StartTx(void)
     // Send the tail byte out.
     uint8_t u8Next;
 
-    CriticalSection::Enter();
-
+    const auto cg = CriticalGuard{};
     // Send the byte at the tail index
     if (m_u8Identity == 0) {
         UART0_UDR = m_pu8TxBuffer[m_uTxTail];
@@ -286,8 +285,6 @@ void ATMegaUART::StartTx(void)
         u8Next = 0;
     }
     m_uTxTail = u8Next;
-
-    CriticalSection::Exit();
 }
 
 //---------------------------------------------------------------------------

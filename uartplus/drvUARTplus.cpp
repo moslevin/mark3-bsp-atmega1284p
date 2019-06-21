@@ -8,7 +8,7 @@
 
 --[Mark3 Realtime Platform]--------------------------------------------------
 
-Copyright (c) 2012 - 2018 m0slevin, all rights reserved.
+Copyright (c) 2012 - 2019 m0slevin, all rights reserved.
 See license.txt for more information
 ===========================================================================*/
 /**
@@ -230,7 +230,7 @@ size_t ATMegaUARTPlus::Write(const void* pvData_, size_t uSizeOut_)
 //---------------------------------------------------------------------------
 void ATMegaUARTPlus::StartTx()
 {
-    CriticalSection::Enter();
+    const auto cg = CriticalGuard{};
     uint8_t u8Byte;
     if (m_clStreamOut.Read(&u8Byte)) {
         if (m_u8Identity == 0) {
@@ -239,17 +239,18 @@ void ATMegaUARTPlus::StartTx()
             UART1_UDR = u8Byte;
         }
     }
-    CriticalSection::Exit();
 }
 
 //---------------------------------------------------------------------------
 void ATMegaUARTPlus::StreamInCallback()
 {
-    CriticalSection::Enter();
-    if (m_clStreamIn.IsEmpty()) {
-        m_clTimerIn.Stop();
+    {
+        const auto cg = CriticalGuard{};
+
+        if (m_clStreamIn.IsEmpty()) {
+            m_clTimerIn.Stop();
+        }
     }
-    CriticalSection::Exit();
     m_clNotifyIn.Signal();
 }
 
